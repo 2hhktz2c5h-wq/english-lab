@@ -56,17 +56,62 @@ const entries = [
     ["is consistent with", "C1", 49, "Viết", "Phù hợp với", "The result is consistent with previous studies.", "Kết quả phù hợp với các nghiên cứu trước.", "The result is consistent to previous studies.", "Dùng consistent with để nói hai quan sát hoặc nguồn dữ liệu phù hợp nhau.", "Explain how a new observation relates to a previous result."],
     ["can be attributed to", "C1", 33, "Viết", "Có thể được quy cho", "The shift can be attributed to a change in solvent.", "Sự dịch chuyển có thể được quy cho việc thay đổi dung môi.", "The shift can be attributed from a change in solvent.", "Cấu trúc là attribute an effect to a cause. Cách nói này hàm ý có cơ sở cho nguyên nhân được nêu.", "Report a possible cause for a shift in a spectrum and mention supporting evidence."],
     ["a limitation of", "B2", 54, "Cả hai", "Một hạn chế của", "A limitation of this study is the small sample size.", "Một hạn chế của nghiên cứu này là cỡ mẫu nhỏ.", "A limitation from this study is the small sample size.", "Dùng a limitation of để nêu một điểm hạn chế của phương pháp hay nghiên cứu.", "Describe one limitation of a study and explain why it matters."],
-    ["suggests that", "B2", 65, "Cả hai", "Gợi ý rằng", "The data suggests that the signal is solvent-dependent.", "Dữ liệu gợi ý rằng tín hiệu phụ thuộc vào dung môi.", "The data suggests to the signal is solvent-dependent.", "Dùng suggests that + mệnh đề khi trình bày cách diễn giải có chừng mực. The data suggest that cũng đúng.", "Describe a tentative conclusion from two measurements."],
+    ["suggests that", "B2", 65, "Cả hai", "Gợi ý rằng", "The data suggests that the signal is solvent-dependent.", "Dữ liệu gợi ý rằng tín hiệu phụ thuộc vào dung môi.", "The data suggests to the signal is solvent-dependent.", "Dùng suggests that + mệnh đề khi trình bày cách diễn giải có chừng mực. The data suggest that cũng đúng.", "Describe a tentative conclusion from two measurements.", null, "suggest that"],
     ["further work is needed", "C1", 31, "Cả hai", "Cần nghiên cứu thêm", "Further work is needed to confirm the mechanism.", "Cần nghiên cứu thêm để xác nhận cơ chế.", "Further work are needed to confirm the mechanism.", "Work ở đây là danh từ không đếm được, đi với is.", "End a research update by explaining what you need to do next."],
     ["account for", "C1", 52, "Cả hai", "Giải thích / lý giải", "The model cannot account for the second peak.", "Mô hình không giải thích được đỉnh thứ hai.", "The model cannot account to the second peak.", "Dùng account for + hiện tượng để nói một lời giải thích có bao quát hiện tượng đó hay không.", "Explain what a model can explain and what still needs investigation."],
   ],
 ];
 
-const phrases = entries.flatMap((rows, topic) => rows.map((row, index) => {
-  const [term, level, score, register, meaning, example, translation, error, note, prompt, corrected] = row;
+const extraEntries = [
+  [24, 0, "I'm on my way", "A2", 96, "Nói", "Mình đang trên đường tới", "I'm on my way to the station.", "Mình đang trên đường tới ga.", "I'm in my way to the station.", "Dùng on my way to + địa điểm để báo mình đang đến đó.", "Text a friend who is waiting at the station and tell them you have already left."],
+  [25, 0, "let me know", "A2", 96, "Cả hai", "Báo mình biết nhé", "Let me know when you get home.", "Về đến nhà thì báo mình biết nhé.", "Let me to know when you get home.", "Let + người + động từ nguyên mẫu, dùng let me know để đề nghị người kia báo lại.", "After saying goodbye, ask your friend to message you once they get home."],
+  [26, 0, "that's fine", "A1", 95, "Nói", "Không sao / vậy cũng được", "That's fine. We can meet a little later.", "Không sao. Tụi mình có thể gặp muộn hơn một chút.", "That fine. We can meet a little later.", "That's là That is. Cụm này giúp người kia biết sự thay đổi không gây phiền.", "A friend apologizes for being ten minutes late. Reassure them that it is okay."],
+  [27, 0, "I'm running late", "A2", 90, "Nói", "Mình đang bị trễ", "I'm running late, so start without me.", "Mình đến trễ, nên cứ bắt đầu trước đi.", "I'm run late, so start without me.", "Run late nghĩa là trễ lịch. Dùng I'm running late để báo tình hình đang xảy ra.", "Call a friend because a delayed train will make you miss the start of dinner."],
+  [28, 0, "do you feel like", "B1", 88, "Nói", "Bạn có muốn… không?", "Do you feel like grabbing coffee after lunch?", "Bạn có muốn đi uống cà phê sau bữa trưa không?", "Do you feel like to grab coffee after lunch?", "Sau feel like, dùng danh từ hoặc V-ing. Cụm này hỏi người kia có hứng làm gì không.", "Ask casually whether a friend feels up for getting coffee after lunch."],
+  [29, 0, "would you mind", "B1", 85, "Nói", "Bạn có phiền… không?", "Would you mind turning the music down?", "Bạn có phiền vặn nhạc nhỏ xuống một chút không?", "Would you mind to turn the music down?", "Dùng would you mind + V-ing để nhờ người kia làm gì một cách lịch sự.", "Politely ask a stranger to turn down their loud music."],
+  [30, 0, "I'm looking for", "A1", 97, "Cả hai", "Mình đang tìm", "I'm looking for a place to charge my phone.", "Mình đang tìm chỗ sạc điện thoại.", "I'm looking a place to charge my phone.", "Dùng look for + thứ đang tìm.", "Tell a shop assistant you need a place where you can charge your phone."],
+  [31, 0, "look forward to", "B1", 86, "Cả hai", "Mong chờ", "I look forward to seeing you on Saturday.", "Mình mong được gặp bạn vào thứ Bảy.", "I look forward to see you on Saturday.", "To trong look forward to là giới từ, theo sau là danh từ hoặc V-ing.", "End a message by saying you are excited about seeing someone on Saturday."],
+  [32, 0, "I'm just kidding", "A2", 88, "Nói", "Mình chỉ đùa thôi", "I'm just kidding. I already paid for it.", "Mình đùa thôi. Mình thanh toán rồi.", "I'm just kid. I already paid for it.", "I'm just kidding cho người nghe biết câu vừa nói chỉ là đùa.", "Tell a friend that your surprising comment about the bill was only a joke."],
+  [33, 0, "that makes sense", "B1", 92, "Nói", "Vậy thì hợp lý / hiểu rồi", "That makes sense. The buses stop early here.", "Vậy thì hiểu rồi. Xe buýt ở đây ngừng chạy sớm.", "That make sense. The buses stop early here.", "That là chủ ngữ số ít, nên dùng makes. Cụm này cho biết lời giải thích vừa nghe hợp lý.", "A friend explains why everyone left early. Show that you understand their explanation."],
+  [34, 0, "how come", "B1", 83, "Nói", "Sao lại…?", "How come the train is so crowded today?", "Sao hôm nay tàu lại đông thế?", "How come is the train so crowded today?", "Sau how come, dùng trật tự câu kể. Cụm này hỏi lý do trong hội thoại thân mật.", "Ask casually why the train is unusually crowded."],
+  [35, 0, "come up with", "B2", 82, "Cả hai", "Nghĩ ra", "Can you come up with another idea?", "Bạn nghĩ ra ý khác được không?", "Can you come up another idea?", "Dùng come up with + ý tưởng, đề xuất hoặc cách giải quyết.", "Ask a friend to think of another plan because the first one won't work."],
+  [36, 0, "get back to you", "B1", 83, "Cả hai", "Phản hồi lại bạn sau", "I'll get back to you after I check my schedule.", "Mình sẽ trả lời bạn sau khi xem lại lịch.", "I'll get back you after I check my schedule.", "Get back to + người nhận nghĩa là liên hệ lại khi có thêm thông tin.", "Someone wants an answer now, but you need to check your schedule and reply later."],
+  [37, 0, "I appreciate it", "B1", 85, "Cả hai", "Mình rất cảm kích", "I appreciate it. You saved me a lot of time.", "Mình rất cảm kích. Bạn giúp mình tiết kiệm khối thời gian.", "I appreciate for it. You saved me a lot of time.", "Appreciate nhận tân ngữ trực tiếp. Dùng I appreciate it để cảm ơn một việc cụ thể.", "Thank a classmate who helped you finish something much faster."],
+  [38, 0, "no worries", "A2", 91, "Nói", "Không sao đâu", "No worries. I can wait a few more minutes.", "Không sao đâu. Mình đợi thêm vài phút được.", "No worryings. I can wait a few more minutes.", "No worries là câu đáp thân mật khi người kia xin lỗi hoặc cảm ơn.", "Respond casually when someone apologizes for making you wait."],
+  [39, 0, "by the way", "A2", 92, "Cả hai", "À, nhân tiện", "By the way, did you get my message?", "À, nhân tiện, bạn nhận được tin nhắn của mình chưa?", "By a way, did you get my message?", "By the way là cụm cố định để chuyển nhẹ sang chuyện khác.", "You were talking about lunch. Bring up a separate question about a message you sent."],
+
+  [40, 1, "off the top of my head", "C1", 63, "Nói", "Theo những gì mình nghĩ ra ngay lúc này", "Off the top of my head, I can think of two examples.", "Nghĩ nhanh thì mình nghĩ ra được hai ví dụ.", "Off the top of my heads, I can think of two examples.", "Dùng cụm này khi trả lời ngay, dựa vào điều nghĩ ra mà chưa kiểm tra hoặc chuẩn bị.", "Without preparing, name two things that could improve public transport."],
+  [41, 1, "a good rule of thumb", "C1", 54, "Cả hai", "Một quy tắc kinh nghiệm hữu ích", "A good rule of thumb is to leave ten minutes early.", "Một mẹo hữu ích là đi sớm mười phút.", "A good rule of thumbs is to leave ten minutes early.", "Rule of thumb dùng thumb số ít và chỉ hướng dẫn dựa trên kinh nghiệm.", "Give a simple practical guideline for getting to appointments on time."],
+  [42, 1, "I'm more of a", "B2", 73, "Nói", "Mình thiên về kiểu người… hơn", "I'm more of a morning person, so I study before class.", "Mình thiên về kiểu người hoạt động tốt buổi sáng, nên mình học trước giờ lên lớp.", "I'm more a of morning person, so I study before class.", "Dùng more of a + danh từ đếm được số ít để nói kiểu người gần với mình hơn.", "Are you more productive early or late in the day? Describe the kind of person you are."],
+  [43, 1, "I'd rather", "B1", 86, "Nói", "Mình thích… hơn", "I'd rather cook at home than eat out.", "Mình thích nấu ở nhà hơn là đi ăn ngoài.", "I'd rather to cook at home than eat out.", "Dùng would rather + động từ nguyên mẫu. Dùng than nếu nêu lựa chọn còn lại.", "Choose between cooking at home and eating out, and explain your preference."],
+  [44, 1, "it's worth", "B1", 85, "Cả hai", "Đáng để…", "It's worth visiting the museum on a weekday.", "Bảo tàng đáng ghé vào một ngày trong tuần.", "It's worth to visit the museum on a weekday.", "Sau worth, dùng danh từ hoặc V-ing để nói điều gì xứng đáng với công sức hay thời gian.", "Recommend one place worth visiting in your city and say when to go."],
+  [45, 1, "I can see why", "B2", 78, "Nói", "Mình hiểu vì sao", "I can see why people prefer flexible working hours.", "Mình hiểu vì sao mọi người thích giờ làm linh hoạt.", "I can see why do people prefer flexible working hours.", "Sau I can see why, dùng trật tự câu kể. Cụm này thừa nhận lý do từ góc nhìn của người khác.", "Acknowledge why some people prefer flexible work hours, then explain your own view."],
+  [46, 1, "when it comes to", "B2", 79, "Cả hai", "Khi nói đến", "When it comes to travel, I care most about the food.", "Khi nói đến du lịch, điều mình quan tâm nhất là đồ ăn.", "When it comes at travel, I care most about the food.", "Dùng when it comes to + danh từ hoặc V-ing để giới thiệu khía cạnh muốn nói.", "Introduce the topic of travel before saying what matters most to you."],
+  [47, 1, "made a difference", "B2", 76, "Cả hai", "Đã tạo ra thay đổi đáng kể", "Practicing out loud made a difference to my confidence.", "Luyện nói thành tiếng giúp mình tự tin lên rõ rệt.", "Practicing out loud made difference to my confidence.", "Cụm make a difference cần mạo từ a. Made là dạng quá khứ của make.", "Describe one habit that had a noticeable impact on your confidence."],
+  [48, 1, "in the long run", "B2", 71, "Cả hai", "Về lâu dài", "Taking the bus saves money in the long run.", "Về lâu dài, đi xe buýt tiết kiệm tiền.", "Taking the bus saves money on the long run.", "In the long run là cụm cố định để nói về tác động sau một thời gian dài.", "Explain a financial benefit of public transport that becomes clearer over time."],
+  [49, 1, "have mixed feelings about", "B2", 64, "Cả hai", "Có cảm xúc trái chiều về", "I have mixed feelings about moving to a bigger city.", "Mình có cảm xúc trái chiều về việc chuyển đến một thành phố lớn hơn.", "I have mixed feelings to moving to a bigger city.", "Dùng mixed feelings about + danh từ hoặc V-ing khi có cả cảm nhận tích cực lẫn tiêu cực.", "Describe how you feel both excited and nervous about moving to a new city."],
+  [50, 1, "from my point of view", "B1", 78, "Cả hai", "Theo góc nhìn của mình", "From my point of view, museums should be free for students.", "Theo góc nhìn của mình, bảo tàng nên miễn phí cho học sinh, sinh viên.", "In my point of view, museums should be free for students.", "Dùng from my point of view hoặc in my view để nêu góc nhìn cá nhân.", "Present your own view on whether students should have to pay to visit museums."],
+  [51, 1, "it comes down to", "B2", 68, "Nói", "Rốt cuộc chủ yếu là do", "It comes down to how much time I can set aside.", "Rốt cuộc chủ yếu là do mình có thể dành ra bao nhiêu thời gian.", "It comes down for how much time I can set aside.", "Dùng it comes down to để chỉ yếu tố quan trọng nhất trong số nhiều yếu tố.", "You've considered several factors. Boil your choice of evening classes down to the one factor that decides it."],
+
+  [52, 2, "the main takeaway", "B2", 63, "Cả hai", "Điểm chính cần nhớ", "The main takeaway is that the samples stayed stable.", "Điểm chính cần nhớ là các mẫu vẫn ổn định.", "The main takeaways is that the samples stayed stable.", "Dùng the main takeaway is that + mệnh đề để tóm tắt thông điệp quan trọng nhất.", "End a two-minute presentation with the one result you want the audience to remember."],
+  [53, 2, "compared with", "B1", 73, "Cả hai", "So với", "The signal is weaker compared with the first measurement.", "Tín hiệu yếu hơn so với phép đo đầu tiên.", "The signal is weaker compared from the first measurement.", "Dùng compared with + mốc so sánh. Compared to cũng dùng được trong câu này.", "Compare today's signal with the value from the first measurement.", null, "compared to"],
+  [54, 2, "as shown in", "B2", 54, "Cả hai", "Như thể hiện trong", "As shown in Figure 2, the peak shifts to longer wavelengths.", "Như thể hiện ở Hình 2, đỉnh dịch về phía bước sóng dài hơn.", "As show in Figure 2, the peak shifts to longer wavelengths.", "As shown in là cách nói rút gọn của as is shown in để dẫn tới hình, bảng hoặc biểu đồ.", "Point the audience to the figure that shows the peak shift."],
+  [55, 2, "rule out", "B2", 69, "Cả hai", "Loại trừ", "We cannot rule out a measurement error.", "Chúng tôi chưa thể loại trừ sai số đo.", "We cannot rule off a measurement error.", "Dùng rule out + khả năng cần loại trừ hoặc cannot rule out nếu khả năng ấy vẫn còn.", "Say that a measurement error remains possible even after your checks."],
+  [56, 2, "a plausible explanation", "C1", 40, "Cả hai", "Một cách giải thích hợp lý", "A plausible explanation is that the sample absorbed moisture.", "Một cách giải thích hợp lý là mẫu đã hút ẩm.", "An plausible explanation is that the sample absorbed moisture.", "Dùng a trước plausible. Plausible cho biết cách giải thích có vẻ hợp lý và còn cần kiểm chứng.", "Offer a reasonable but tentative explanation for a change in sample mass."],
+  [57, 2, "we observed that", "B1", 50, "Cả hai", "Chúng tôi quan sát thấy rằng", "We observed that the color changed over time.", "Chúng tôi quan sát thấy màu thay đổi theo thời gian.", "We observed to that the color changed over time.", "Dùng observe that + mệnh đề để báo cáo điều đã quan sát được.", "Describe a color change that you actually saw over the course of an experiment."],
+  [58, 2, "within the margin of error", "C1", 36, "Cả hai", "Nằm trong biên độ sai số", "The difference is within the margin of error.", "Chênh lệch nằm trong biên độ sai số.", "The difference is inside to the margin of error.", "Dùng within the margin of error để báo giá trị chênh lệch nằm trong mức sai số đã xác định.", "Explain that the difference you measured fits within the established uncertainty."],
+  [59, 2, "a follow-up experiment", "B2", 37, "Cả hai", "Một thí nghiệm tiếp theo", "A follow-up experiment could test that hypothesis.", "Một thí nghiệm tiếp theo có thể kiểm tra giả thuyết đó.", "A follow up experiments could test that hypothesis.", "Dùng follow-up có gạch nối trước danh từ. Sau a, experiment ở số ít.", "Suggest one next experiment that could test a hypothesis from your current result."],
+];
+
+function makePhrase(id, topic, row) {
+  const [term, level, score, register, meaning, example, translation, error, note, prompt, corrected, alternative] = row;
   const pattern = term === "take it for granted" ? "take for granted" : term;
-  return { id: topic * 8 + index, topic, term, level, score, register, meaning, example, translation, error, note, prompt, corrected: corrected || example, pattern };
-}));
+  return { id, topic, term, level, score, register, meaning, example, translation, error, note, prompt, corrected: corrected || example, pattern, alternative };
+}
+
+const phrases = entries.flatMap((rows, topic) =>
+  rows.map((row, index) => makePhrase(topic * 8 + index, topic, row))
+).concat(extraEntries.map(([id, topic, ...row]) => makePhrase(id, topic, row)));
 const shapes = {
   wave:'<path d="M2 12h2l2-5 3 10 3-14 3 18 3-10 2 1h2"/>',
   chat:'<path d="M5 17l-2 4v-6a4 4 0 0 1-1-3V8a5 5 0 0 1 5-5h10a5 5 0 0 1 5 5v4a5 5 0 0 1-5 5Z"/><path d="M7 10h10m-10 3h6"/>',
@@ -117,6 +162,7 @@ const practiceSettings = { topic:"all", type:"all", count:"10" };
 let currentPage = "home";
 let run = null;
 let reviewRun = null;
+let speakingTopic = 0;
 let speakingIndex = 0;
 let seconds = 60;
 let timer = null;
@@ -134,25 +180,41 @@ function shuffle(items) {
   return result;
 }
 const typeNames = ["Nhớ nghĩa", "Điền cụm từ", "Sửa lỗi", "Dịch Việt–Anh", "Chọn tình huống"];
+const phrasesById = new Map(phrases.map(phrase => [phrase.id, phrase]));
+const phrasesByTopic = topics.map((_, index) => phrases.filter(phrase => phrase.topic === index));
 const exercises = phrases.flatMap(phrase => typeNames.map((type, index) => ({phrase, type, index, key:`${phrase.id}-${index}`})));
+
+function prioritizeUnanswered(items) {
+  const mixed = shuffle(items);
+  return mixed.filter(item => !(item.key in progress.results))
+    .concat(mixed.filter(item => item.key in progress.results));
+}
+
 function makeQuestion(exercise) {
   const {phrase, index} = exercise;
-  const other = phrases.filter(item => item.id !== phrase.id && item.topic === phrase.topic);
+  const other = phrasesByTopic[phrase.topic].filter(item => item.id !== phrase.id);
   if (index === 0) {
     return { title:phrase.term, instruction:"Chọn nghĩa của cụm từ.", answer:phrase.meaning, choices:[phrase.meaning, ...shuffle(other).slice(0,3).map(item => item.meaning)] };
   }
   if (index === 1) {
     const start = phrase.example.toLowerCase().indexOf(phrase.pattern.toLowerCase());
     const end = start + phrase.pattern.length;
-    return { title:phrase.example.slice(0,start) + "_____" + phrase.example.slice(end), instruction:"Điền cụm tiếng Anh còn thiếu.", answer:phrase.example.slice(start,end), hint:phrase.translation };
+    return { title:phrase.example.slice(0,start) + "_____" + phrase.example.slice(end), instruction:"Điền cụm tiếng Anh còn thiếu.", answer:phrase.example.slice(start,end), alternative:phrase.alternative, hint:phrase.translation };
   }
   if (index === 2) {
-    return { title:phrase.error, instruction:"Viết lại cả câu và sửa lỗi trong cụm từ.", answer:phrase.corrected };
+    return {
+      title:phrase.error, instruction:"Viết lại cả câu và sửa lỗi trong cụm từ.", answer:phrase.corrected,
+      alternative:phrase.alternative && phrase.corrected.replace(phrase.pattern, phrase.alternative),
+    };
   }
   if (index === 3) {
     return { title:phrase.translation, instruction:"Chọn câu tiếng Anh truyền đạt đúng ý.", answer:phrase.example, choices:[phrase.example, ...shuffle(other).slice(0,3).map(item => item.example)] };
   }
-  return { title:phrase.prompt, instruction:"Chọn cụm phù hợp nhất cho tình huống.", answer:phrase.term, choices:[phrase.term, ...shuffle(other).slice(0,3).map(item => item.term)] };
+  const interchangeable = ["that's fine", "no worries"];
+  const distractors = interchangeable.includes(phrase.term)
+    ? other.filter(item => !interchangeable.includes(item.term))
+    : other;
+  return { title:phrase.prompt, instruction:"Chọn cụm phù hợp nhất cho tình huống.", answer:phrase.term, choices:[phrase.term, ...shuffle(distractors).slice(0,3).map(item => item.term)] };
 }
 
 function dateLabel(timestamp) {
@@ -198,13 +260,17 @@ function renderHome() {
     ${stat("repeat", dueCards().length, "Cụm đến hạn ôn")}
     ${stat("mic", progress.speaking, "Lượt luyện nói", "mint")}
   </div></section>
-  <section class="section"><div class="section-title"><h2>Chọn chủ đề</h2><p>24 cụm từ · 120 câu luyện</p></div><div class="topic-grid">
-  ${topics.map((topic,index) => `<button class="topic" data-act="topic" data-id="${index}"><span class="glyph ${topic.color}">${icon(topic.icon)}</span><div><h3>${topic.name}</h3><p>${topic.description}</p></div><small>8 cụm từ · 40 câu</small></button>`).join("")}
+  <section class="section"><div class="section-title"><h2>Chọn chủ đề</h2><p>${phrases.length} cụm từ · ${exercises.length} câu luyện</p></div><div class="topic-grid">
+  ${topics.map((topic,index) => {
+    const count = phrasesByTopic[index].length;
+    return `<button class="topic" data-act="topic" data-id="${index}"><span class="glyph ${topic.color}">${icon(topic.icon)}</span><div><h3>${topic.name}</h3><p>${topic.description}</p></div><small>${count} cụm từ · ${count * typeNames.length} câu</small></button>`;
+  }).join("")}
   </div></section>`;
 }
 
-function topicOptions(selected) {
-  return `<option value="all"${selected === "all" ? " selected" : ""}>Tất cả chủ đề</option>` +
+function topicOptions(selected, includeAll = true) {
+  const all = includeAll ? `<option value="all"${selected === "all" ? " selected" : ""}>Tất cả chủ đề</option>` : "";
+  return all +
     topics.map((topic,index) => `<option value="${index}"${selected === String(index) ? " selected" : ""}>${topic.name}</option>`).join("");
 }
 function renderWords() {
@@ -294,7 +360,9 @@ function submitAnswer() {
   const exercise = run.items[run.position];
   const response = run.question.choices ? run.question.choices[run.selection] : el("typed").value.trim();
   if (!response) return;
-  const correct = normalize(response) === normalize(run.question.answer);
+  const normalized = normalize(response);
+  const correct = [run.question.answer, run.question.alternative]
+    .some(answer => answer && normalized === normalize(answer));
   run.answers.push({exercise, correct, response});
   progress.results[exercise.key] = correct;
   if (correct) delete progress.errors[exercise.key];
@@ -356,10 +424,11 @@ function showTimer() {
   el("timer").textContent = `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,"0")}`;
 }
 function renderSpeaking() {
-  const phrase = phrases[speakingIndex];
+  const choices = phrasesByTopic[speakingTopic];
+  const phrase = choices[speakingIndex];
   main.innerHTML = `${title("Luyện nói 60 giây", "Nói thành tiếng, nghe lại bản thu và tự kiểm tra bằng ba tiêu chí bên dưới.")}
     <section class="panel quiz spoken">
-    <div class="row spread"><label><span class="sr">Chủ đề luyện nói</span><select class="typed" id="speaking-topic">${topicOptions(String(phrase.topic)).replace('<option value="all">Tất cả chủ đề</option>', "")}</select></label><span class="pill">Đề ${speakingIndex % 8 + 1}/8</span></div>
+    <div class="row spread"><label><span class="sr">Chủ đề luyện nói</span><select class="typed" id="speaking-topic">${topicOptions(String(speakingTopic), false)}</select></label><span class="pill">Đề ${speakingIndex + 1}/${choices.length}</span></div>
     <h2 lang="en">${phrase.prompt}</h2><p class="muted">Cụm gợi ý <strong lang="en">${phrase.term}</strong></p>
     <div id="timer" class="timer">1:00</div>
     <div class="actions"><button class="btn" id="timer-button" data-act="timer">Bấm giờ</button><button class="btn alt" id="record-button" data-act="record">${icon("mic")} Thu âm</button><button class="btn alt" data-act="speaking-next">Đề tiếp theo</button></div>
@@ -442,7 +511,7 @@ document.addEventListener("click", event => {
   if (target.dataset.page) { navigate(target.dataset.page); return; }
   const id = Number(target.dataset.id);
   switch (target.dataset.act) {
-    case "quick": start(shuffle(exercises).slice(0,10)); break;
+    case "quick": start(prioritizeUnanswered(exercises).slice(0,10)); break;
     case "topic": startWith(id); break;
     case "queue": queuePhrase(id); target.textContent = "Đã lưu để ôn"; target.disabled = true; break;
     case "audio": {
@@ -451,7 +520,7 @@ document.addEventListener("click", event => {
         break;
       }
       window.speechSynthesis.cancel();
-      const message = new SpeechSynthesisUtterance(phrases[id].example);
+      const message = new SpeechSynthesisUtterance(phrasesById.get(id).example);
       message.lang = "en-US";
       message.rate = .87;
       window.speechSynthesis.speak(message);
@@ -482,7 +551,7 @@ document.addEventListener("click", event => {
       break;
     case "speaking-next":
       resetSpeaking();
-      speakingIndex = Math.floor(speakingIndex / 8) * 8 + (speakingIndex + 1) % 8;
+      speakingIndex = (speakingIndex + 1) % phrasesByTopic[speakingTopic].length;
       renderSpeaking();
       break;
     case "speaking-save":
@@ -530,7 +599,8 @@ document.addEventListener("change", event => {
   }
   if (id === "speaking-topic") {
     resetSpeaking();
-    speakingIndex = Number(value) * 8;
+    speakingTopic = Number(value);
+    speakingIndex = 0;
     renderSpeaking();
   }
 });
@@ -547,7 +617,7 @@ document.addEventListener("submit", event => {
     const items = exercises.filter(item =>
       (practiceSettings.topic === "all" || Number(practiceSettings.topic) === item.phrase.topic)
       && (practiceSettings.type === "all" || Number(practiceSettings.type) === item.index));
-    const mixed = shuffle(items);
+    const mixed = prioritizeUnanswered(items);
     start(practiceSettings.count === "all" ? mixed : mixed.slice(0,Number(practiceSettings.count)));
   }
 });
