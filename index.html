@@ -151,9 +151,125 @@ function makePhrase(id, topic, row) {
   return { id, topic, term, level, score, register, meaning, example, translation, error, note, prompt, corrected: corrected || example, pattern, alternative };
 }
 
-const phrases = entries.flatMap((rows, topic) =>
+const expressions = entries.flatMap((rows, topic) =>
   rows.map((row, index) => makePhrase(topic * 8 + index, topic, row))
 ).concat(extraEntries.map(([id, topic, ...row]) => makePhrase(id, topic, row)));
+// Each row describes one sense. The correction changes a short fragment of the example.
+const wordGroups = [
+  [
+    [100, "afford", "B1", 87, "Có đủ tiền để chi trả", "be able to pay for", "I can't afford to buy a new laptop.", "Mình không đủ tiền mua laptop mới.", "afford to buy|afford buying", "Dùng afford + danh từ hoặc afford to + động từ.", "Explain why buying something new is beyond your budget."],
+    [101, "avoid", "B1", 88, "Tránh", "steer clear of", "I try to avoid driving during rush hour.", "Mình cố tránh lái xe vào giờ cao điểm.", "avoid driving|avoid to drive", "Dùng avoid + danh từ hoặc V-ing. Steer clear of thân mật hơn.", "Describe what you do to stay away from rush-hour traffic."],
+    [102, "borrow", "A2", 89, "Mượn", "take on loan", "Can I borrow your charger for a minute?", "Mình mượn sạc của bạn một chút được không?", "borrow your charger|borrow me your charger", "Borrow là nhận đồ để dùng tạm. Nếu nêu người cho mượn, dùng borrow something from someone.", "Ask to use a friend's charger for a short time."],
+    [103, "lend", "A2", 86, "Cho mượn", "loan", "Could you lend me your umbrella?", "Bạn cho mình mượn ô được không?", "lend me your umbrella|lend your umbrella from me", "Dùng lend someone something hoặc lend something to someone. Loan cũng dùng như động từ, nhất là trong tiếng Anh Mỹ.", "Ask someone to let you use their umbrella and return it later."],
+    [104, "cancel", "A2", 88, "Hủy", "call off", "We had to cancel the picnic because of the rain.", "Tụi mình phải hủy buổi dã ngoại vì trời mưa.", "cancel the picnic|cancel about the picnic", "Cancel nhận tân ngữ trực tiếp. Call off thường dùng với sự kiện đã lên lịch.", "Explain why a planned picnic will no longer take place."],
+    [105, "delay", "B1", 84, "Trì hoãn", "postpone", "Can we delay the meeting until tomorrow?", "Mình dời cuộc họp tới ngày mai được không?", "delay the meeting|delay to the meeting", "Delay nhận tân ngữ trực tiếp. Postpone thường dùng khi chuyển sang một thời điểm muộn hơn.", "Ask for a meeting to take place later than planned."],
+    [106, "confirm", "B1", 86, "Xác nhận", "verify, make sure", "Could you confirm that the booking went through?", "Bạn xác nhận giúp việc đặt chỗ đã thành công được không?", "confirm that|confirm about that", "Dùng confirm + danh từ hoặc confirm that + mệnh đề. Verify nhấn mạnh việc kiểm tra.", "Ask the hotel to check that your reservation went through."],
+    [107, "arrange", "B1", 84, "Sắp xếp để việc gì diễn ra", "organize, set up", "I can arrange a ride for you.", "Mình có thể sắp xếp xe cho bạn.", "arrange a ride|arrange to a ride", "Arrange a ride for someone là sắp xếp xe cho ai. Cũng có thể dùng arrange for someone to do something.", "Offer to organize transportation for a visitor."],
+    [108, "prefer", "A2", 93, "Thích hơn", "favor, like better", "I prefer tea to coffee in the evening.", "Buổi tối mình thích trà hơn cà phê.", "tea to coffee|tea than coffee", "Dùng prefer A to B. Nếu muốn dùng than, có thể nói like A better than B.", "Say which drink you like better in the evening."],
+    [109, "suggest", "B1", 90, "Đề xuất", "propose", "I suggest taking the earlier train.", "Mình đề xuất đi chuyến tàu sớm hơn.", "suggest taking|suggest to take", "Dùng suggest + V-ing hoặc suggest that + mệnh đề. Propose trang trọng hơn.", "Offer a plan for catching a train before the station gets busy."],
+    [110, "recommend", "B1", 88, "Khuyên dùng hoặc giới thiệu", "endorse, suggest", "Would you recommend trying this restaurant?", "Bạn có khuyên nên thử quán này không?", "recommend trying|recommend to try", "Dùng recommend + V-ing. Endorse thể hiện sự ủng hộ rõ ràng hơn và thường trang trọng hơn.", "Ask a local whether trying a particular restaurant is a good idea."],
+    [111, "explain", "A2", 93, "Giải thích", "clarify", "Could you explain the problem to me?", "Bạn giải thích vấn đề cho mình được không?", "explain the problem to me|explain me the problem", "Dùng explain something to someone. Clarify nhấn mạnh việc làm sáng tỏ một điểm còn mơ hồ.", "Ask someone to help you understand what went wrong."],
+    [112, "remind", "A2", 91, "Nhắc ai nhớ", "prompt, jog someone's memory", "Can you remind me to call the dentist?", "Bạn nhắc mình gọi nha sĩ được không?", "remind me to call|remind me call", "Dùng remind someone to do something. Jog someone's memory thường dùng khi giúp ai nhớ lại.", "Ask a friend to help you remember a call you need to make."],
+    [113, "regret", "B1", 78, "Hối tiếc về việc đã làm", "feel sorry about", "I regret leaving the party so early.", "Mình tiếc vì rời bữa tiệc sớm quá.", "regret leaving|regret to leave", "Regret + V-ing diễn tả hối tiếc về việc đã xảy ra. Regret to thường dùng khi sắp thông báo tin không vui.", "Talk about something you did and now wish you had done differently."],
+    [114, "notice", "A2", 91, "Để ý thấy", "spot, observe", "Did you notice that the café closed early?", "Bạn có để ý quán cà phê đóng cửa sớm không?", "notice that|notice about that", "Dùng notice that + mệnh đề. Spot thường dùng khi bất chợt nhìn thấy một người hoặc vật.", "Ask a friend if they observed an unexpected change in opening hours."],
+    [115, "realize", "B1", 90, "Nhận ra", "become aware of", "I didn't realize that today was a public holiday.", "Mình không nhận ra hôm nay là ngày nghỉ lễ.", "didn't realize|didn't realized", "Sau didn't dùng nguyên mẫu. Realise là cách viết Anh.", "Explain that you only just understood why most shops are closed.", "Cả hai", "realise"],
+    [116, "assume", "B2", 79, "Cho là đúng khi chưa chắc", "suppose, take for granted", "I assume the café is still open.", "Mình đoán quán cà phê vẫn còn mở.", "assume the café is|assume is the café", "Sau assume dùng trật tự câu kể. Take for granted thể hiện mức mặc định mạnh hơn.", "State what you believe about a shop's hours before checking them."],
+    [117, "expect", "B1", 89, "Trông đợi điều có khả năng xảy ra", "anticipate", "I expect the parcel to arrive tomorrow.", "Mình nghĩ kiện hàng sẽ đến ngày mai.", "the parcel to arrive|the parcel arriving", "Dùng expect someone or something to do something. Anticipate trang trọng hơn và đôi khi hàm ý đã tính trước.", "Say when you think a delivery will probably arrive."],
+    [118, "guess", "A2", 94, "Đoán khi thiếu thông tin", "make a guess, reckon", "Can you guess how much it costs?", "Bạn đoán xem nó giá bao nhiêu được không?", "how much it costs|how much does it cost", "Câu hỏi gián tiếp sau guess dùng trật tự câu kể. Reckon thân mật và thường dùng khi nêu nhận định.", "Ask a friend to estimate a price they haven't seen."],
+    [119, "hesitate", "B2", 71, "Ngần ngại", "hold back, pause", "I sometimes hesitate to speak in meetings.", "Đôi lúc mình ngần ngại phát biểu trong cuộc họp.", "hesitate to speak|hesitate speaking", "Dùng hesitate to + động từ. Hold back có thể hàm ý tự kiềm lại.", "Describe a moment when uncertainty made you reluctant to speak."],
+    [120, "manage", "B1", 87, "Xoay xở làm được", "succeed in", "Did you manage to find a seat before the show started?", "Bạn xoay xở tìm được chỗ trước khi buổi diễn bắt đầu không?", "manage to find|manage finding", "Dùng manage to + động từ khi làm được việc có phần khó. Succeed in đi với V-ing.", "Ask whether someone succeeded at finding a seat despite a crowded venue."],
+    [121, "handle", "B1", 84, "Xử lý", "deal with, cope with", "I can handle the complaint myself.", "Mình tự xử lý lời phàn nàn được.", "handle the complaint|handle with the complaint", "Handle nhận tân ngữ trực tiếp. Cope with thường nhấn mạnh khả năng đối phó với khó khăn.", "Offer to deal with an unhappy customer's complaint by yourself."],
+    [122, "bother", "B1", 81, "Làm phiền", "disturb, interrupt", "I don't want to bother you during lunch.", "Mình không muốn làm phiền bạn lúc ăn trưa.", "bother you|bother to you", "Bother someone dùng tân ngữ trực tiếp. Interrupt thường là chen ngang hoặc làm gián đoạn việc đang diễn ra.", "Explain why you're going to wait until someone has finished lunch."],
+    [123, "deserve", "B1", 79, "Xứng đáng nhận được", "be worthy of, merit", "You deserve a break after all that work.", "Sau ngần ấy việc, bạn xứng đáng được nghỉ một chút.", "deserve a break|deserve for a break", "Dùng deserve + danh từ. Merit trang trọng hơn.", "Tell someone their effort has earned them time to rest."],
+    [124, "complain", "B1", 85, "Phàn nàn", "voice dissatisfaction, grumble", "Guests often complain about the noise.", "Khách thường phàn nàn về tiếng ồn.", "complain about|complain for", "Dùng complain about + vấn đề. Grumble thường là càu nhàu và ít trang trọng hơn.", "Describe what guests do when the hotel noise bothers them."],
+    [125, "apologize", "B1", 83, "Xin lỗi", "say sorry", "I want to apologize for being late.", "Mình muốn xin lỗi vì đến muộn.", "apologize for|apologize about to", "Dùng apologize for + lý do và apologize to + người. Apologise là cách viết Anh.", "Take responsibility after arriving late to meet someone.", "Cả hai", "apologise"],
+    [126, "offer", "A2", 90, "Chủ động đề nghị làm giúp", "volunteer, propose", "I can offer to help with the boxes.", "Mình có thể đề nghị giúp bê mấy cái thùng.", "offer to help|offer helping", "Dùng offer to + động từ khi chủ động đề nghị làm gì. Volunteer cũng thường đi với to.", "Say what you could volunteer to do when someone is moving."],
+    [127, "refuse", "B1", 83, "Từ chối", "decline, turn down", "I might refuse to pay an unexpected fee.", "Có thể mình sẽ từ chối trả khoản phí bất ngờ.", "refuse to pay|refuse paying", "Refuse to + động từ thường mạnh hơn decline. Turn down đi với danh từ như an offer hoặc an invitation.", "Explain why you would not agree to pay a fee you weren't told about."],
+    [128, "accept", "A2", 91, "Chấp nhận", "agree to, take up", "I decided to accept the invitation.", "Mình quyết định nhận lời mời.", "accept the invitation|accept to the invitation", "Accept nhận tân ngữ trực tiếp. Take up có thể dùng với lời đề nghị hoặc cơ hội.", "Tell a friend you have decided to say yes to an invitation."],
+    [129, "agree", "A2", 94, "Đồng ý với ai", "concur, be of the same mind", "I agree with you about leaving early.", "Mình đồng ý với bạn về chuyện đi sớm.", "agree with you|agree to you", "Agree with + người hoặc quan điểm. Agree to + đề nghị. Concur trang trọng hơn.", "Show you share someone's opinion about leaving earlier."],
+    [130, "annoyed", "B1", 82, "Bực mình", "irritated, bothered", "I'm annoyed by the constant interruptions.", "Mình bực vì liên tục bị làm gián đoạn.", "I'm annoyed by|I'm annoying by", "Annoyed nói về cảm giác của người. Annoying nói về điều gây khó chịu.", "Describe how repeated interruptions make you feel."],
+    [131, "relieved", "B1", 79, "Nhẹ nhõm", "reassured, at ease", "I felt relieved when the exam was over.", "Mình thấy nhẹ nhõm khi thi xong.", "felt relieved|felt relieving", "Relieved thường xuất hiện khi mối lo vừa qua. Reassured là an tâm hơn nhờ có lời trấn an hoặc thông tin.", "Describe your feeling once a stressful exam has ended."],
+    [132, "awkward", "B2", 83, "Gượng gạo, khó xử", "uncomfortable, embarrassing", "There was an awkward silence after the joke.", "Sau câu đùa là một khoảng im lặng khó xử.", "an awkward silence|an awkwardly silence", "Dùng tính từ awkward trước danh từ. Embarrassing nhấn mạnh sự ngượng ngùng.", "Describe the uncomfortable silence after a joke no one laughed at."],
+    [133, "available", "A2", 92, "Rảnh, có thể sắp xếp thời gian", "free", "Are you available for a quick call this afternoon?", "Chiều nay bạn rảnh để gọi nhanh một chút không?", "Are you available|Do you available", "Available là tính từ nên đi với be. Khi nói về lịch cá nhân, free là lựa chọn thân mật.", "Ask whether someone has time for a short call today."],
+    [134, "convenient", "B1", 85, "Thuận tiện", "handy, practical", "Is this time convenient for you?", "Giờ này có thuận tiện cho bạn không?", "convenient for you|convenient to you", "Dùng convenient for + người. Handy thân mật và thường nói về thứ dễ dùng hoặc dễ lấy.", "Check whether a proposed meeting time works well for someone."],
+    [135, "nearby", "A2", 90, "Ở gần", "close by, near", "There's a pharmacy nearby.", "Có một hiệu thuốc ở gần đây.", "pharmacy nearby|pharmacy near by here", "Nearby đứng một mình sau danh từ hoặc động từ. Near thường có mốc đi kèm, như near the station.", "Tell a visitor there is a pharmacy a short distance away."],
+    [136, "decent", "B2", 78, "Khá ổn, đủ tốt", "acceptable, reasonably good", "We found a decent hotel near the station.", "Tụi mình tìm được khách sạn khá ổn gần ga.", "a decent hotel|a decently hotel", "Decent là tính từ và thường thể hiện đánh giá vừa phải. Acceptable có thể chỉ mức đủ chấp nhận.", "Describe a hotel that met your needs without being exceptional.", "Nói"],
+    [137, "crowded", "A2", 90, "Đông người", "packed, busy", "The bus gets crowded after five.", "Xe buýt trở nên đông sau năm giờ.", "gets crowded|gets crowding", "Dùng get + tính từ crowded. Packed mạnh hơn và gợi ý gần như kín chỗ.", "Describe how full a bus becomes during the evening commute."],
+    [138, "reliable", "B1", 84, "Đáng tin cậy", "dependable, trustworthy", "We need a reliable way to get to work.", "Tụi mình cần một cách đi làm đáng tin cậy.", "a reliable way|a reliably way", "Reliable dùng với người, phương tiện và hệ thống. Trustworthy thường nói về người hoặc nguồn thông tin.", "Explain what matters when choosing a form of transport you can count on."],
+    [139, "urgent", "B1", 85, "Gấp, cần xử lý ngay", "pressing, time-sensitive", "I have an urgent issue to deal with.", "Mình có một việc gấp cần xử lý.", "an urgent issue|a urgent issue", "Dùng an vì urgent bắt đầu bằng nguyên âm. Urgent nói về thời gian cần xử lý.", "Explain why you need to attend to a problem immediately."],
+  ],
+  [
+    [140, "improve", "A2", 94, "Cải thiện", "enhance, make better", "Daily practice can improve my pronunciation.", "Luyện mỗi ngày có thể cải thiện phát âm của mình.", "can improve|can improving", "Sau can, dùng nguyên mẫu. Enhance trang trọng hơn và thường dùng với chất lượng hoặc trải nghiệm.", "Explain how a daily habit can make your pronunciation better."],
+    [141, "develop", "B1", 88, "Phát triển dần", "build, cultivate", "It takes time to develop a useful habit.", "Cần thời gian để hình thành một thói quen hữu ích.", "develop a useful habit|develop to a useful habit", "Develop a habit dùng tân ngữ trực tiếp. Cultivate nhấn mạnh công sức vun đắp qua thời gian.", "Describe a useful habit you'd like to build over the next year."],
+    [142, "influence", "B2", 83, "Tác động đến lựa chọn hoặc hành vi", "shape, sway", "Friends can influence the way we spend our time.", "Bạn bè có thể ảnh hưởng đến cách mình sử dụng thời gian.", "influence the way|influence on the way", "Động từ influence nhận tân ngữ trực tiếp. Danh từ thường đi với on. Sway gợi ý làm ai đổi ý.", "Describe one way friends shape what people do in their free time."],
+    [143, "affect", "B1", 89, "Gây ảnh hưởng đến kết quả hoặc trạng thái", "impact, have an effect on", "Long commutes can affect people's mood.", "Đi làm xa có thể ảnh hưởng đến tâm trạng.", "affect people's mood|affect on people's mood", "Affect là động từ nhận tân ngữ trực tiếp. Danh từ effect dùng trong have an effect on.", "Explain how a long commute can change the way a person feels."],
+    [144, "benefit", "B1", 88, "Lợi ích", "advantage, upside", "One benefit of walking is that it costs nothing.", "Một lợi ích của đi bộ là không tốn tiền.", "One benefit of|One benefit on", "Dùng a benefit of + hoạt động. Upside thân mật hơn.", "Name one positive outcome of walking instead of paying for transport."],
+    [145, "drawback", "B2", 71, "Mặt hạn chế", "disadvantage, downside", "The main drawback of online classes is the lack of interaction.", "Hạn chế chính của lớp học trực tuyến là ít tương tác.", "drawback of online classes|drawback from online classes", "Dùng drawback of hoặc drawback to để nói mặt hạn chế của một phương án. Downside thân mật hơn.", "Identify the negative side of taking classes entirely online."],
+    [146, "advantage", "B1", 85, "Lợi thế", "edge, strength", "Her experience gives her an advantage over other candidates.", "Kinh nghiệm mang lại cho cô ấy lợi thế so với các ứng viên khác.", "advantage over|advantage above", "Dùng have an advantage over + người hoặc phương án được so sánh.", "Explain why one job applicant is in a better position than the others."],
+    [147, "challenge", "B1", 90, "Thử thách", "obstacle, difficulty", "Finding time to study is a real challenge.", "Tìm thời gian học là một thử thách thực sự.", "a real challenge|a really challenge", "Dùng real trước danh từ challenge. Obstacle thường chỉ một trở ngại cụ thể.", "Describe the most difficult part of studying while working."],
+    [148, "opportunity", "B1", 88, "Cơ hội", "chance, opening", "Studying abroad gives people an opportunity to meet new friends.", "Du học cho mọi người cơ hội gặp những người bạn mới.", "opportunity to meet|opportunity meet", "Dùng an opportunity to + động từ. Opening thường chỉ một chỗ trống hoặc cơ hội cụ thể.", "Describe a chance to form friendships that comes with studying abroad."],
+    [149, "habit", "A2", 89, "Thói quen", "routine, practice", "I have a habit of checking my phone after waking up.", "Mình có thói quen kiểm tra điện thoại sau khi thức dậy.", "habit of checking|habit to checking", "Dùng a habit of + V-ing. Routine thường gồm một chuỗi việc có nề nếp.", "Describe one action you repeat almost automatically in the morning."],
+    [150, "motivation", "B1", 79, "Động lực", "drive, incentive", "My biggest motivation for learning English is to travel on my own.", "Động lực lớn nhất để mình học tiếng Anh là có thể tự đi du lịch.", "motivation for learning|motivation for learn", "Dùng motivation for + danh từ hoặc V-ing. Drive là động lực bên trong, incentive có thể là yếu tố khuyến khích từ bên ngoài.", "Say what gives you the drive to keep learning English."],
+    [151, "confidence", "B1", 85, "Sự tự tin", "self-assurance", "My confidence grew after I joined a speaking club.", "Mình tự tin hơn sau khi tham gia câu lạc bộ luyện nói.", "My confidence grew|My confident grew", "Confidence là danh từ. Confident là tính từ.", "Describe a time when you became more sure of your ability to speak."],
+    [152, "independent", "B1", 83, "Tự lập", "self-reliant", "Living away from home made me more independent.", "Sống xa nhà khiến mình tự lập hơn.", "more independent|more independently", "Dùng tính từ independent sau made me more. Independently là trạng từ.", "Explain how living away from home helped you rely more on yourself."],
+    [153, "flexible", "B2", 81, "Linh hoạt, dễ điều chỉnh", "adaptable, adjustable", "A flexible schedule makes it easier to attend classes.", "Lịch linh hoạt giúp mình dễ đi học hơn.", "A flexible schedule|A flexibly schedule", "Flexible là tính từ. Adjustable dùng khi có thể điều chỉnh một đồ vật hoặc điều kiện.", "Explain how a timetable that can change would help a working student."],
+    [154, "effective", "B1", 86, "Có hiệu quả, đạt mục tiêu", "successful, works well", "Short daily sessions are an effective way to learn vocabulary.", "Học ngắn mỗi ngày là một cách học từ vựng hiệu quả.", "an effective way|an effectively way", "Effective nhấn mạnh việc đạt kết quả mong muốn. Dùng tính từ trước danh từ way.", "Describe a study method that actually helps you remember vocabulary."],
+    [155, "efficient", "B2", 78, "Ít tốn thời gian hoặc nguồn lực", "resource-saving, streamlined", "The train is an efficient way to move large numbers of people.", "Tàu là phương tiện vận chuyển nhiều người mà dùng nguồn lực hiệu quả.", "an efficient way|an efficiency way", "Efficient nhấn mạnh cách dùng thời gian, công sức hoặc nguồn lực. Efficiency là danh từ.", "Explain which transport option can move many people using relatively little time or energy."],
+    [156, "affordable", "B1", 84, "Có giá vừa khả năng chi trả", "reasonably priced, budget-friendly", "Students need affordable places to live near campus.", "Sinh viên cần chỗ ở giá phải chăng gần trường.", "affordable places|afford places", "Affordable là tính từ dùng khi giá nằm trong khả năng chi trả. Budget-friendly hơi thân mật.", "Describe what reasonably priced housing would look like for students."],
+    [157, "accessible", "B2", 79, "Dễ tiếp cận hoặc sử dụng", "easy to access, within reach", "Online lessons make education more accessible to working adults.", "Bài học trực tuyến giúp người đang đi làm dễ tiếp cận giáo dục hơn.", "accessible to working adults|accessible working adults", "Accessible to + người dùng. Từ này có thể nói về khả năng tiếp cận vật lý, công nghệ hoặc thông tin.", "Explain how remote classes remove barriers for people who work."],
+    [158, "practical", "B1", 86, "Thiết thực, dùng được trong thực tế", "realistic, workable", "Cycling is a practical option for short trips.", "Đi xe đạp là lựa chọn thiết thực cho chuyến đi ngắn.", "a practical option|a practically option", "Practical là tính từ. Workable nhấn mạnh một kế hoạch có thể thực hiện được.", "Suggest a transport option that makes sense for short everyday journeys."],
+    [159, "sustainable", "B2", 72, "Có thể duy trì lâu dài", "viable in the long term", "We need a more sustainable way to travel around cities.", "Ta cần cách di chuyển trong thành phố bền vững hơn.", "more sustainable way|more sustainably way", "Sustainable nói tới khả năng duy trì lâu dài. Khi bàn về môi trường, từ này thường hàm ý giảm tác động tiêu cực.", "Explain what would make urban travel environmentally viable in the long term."],
+    [160, "significant", "B2", 75, "Đáng kể", "considerable, substantial", "The new bus route made a significant difference to my commute.", "Tuyến xe buýt mới tạo khác biệt đáng kể cho việc đi làm của mình.", "a significant difference|a significantly difference", "Dùng tính từ significant trước danh từ difference. Considerable và substantial nhấn mạnh mức độ.", "Explain how a small policy change had a noticeable impact on your daily commute."],
+    [161, "common", "A2", 96, "Thường gặp", "widespread, prevalent", "It's common for students to work part-time.", "Sinh viên đi làm thêm là chuyện thường gặp.", "common for students to work|common students working", "Dùng it is common for + người + to + động từ. Prevalent trang trọng hơn.", "Describe an activity many students in your area do alongside studying."],
+    [162, "valuable", "B1", 84, "Có giá trị hoặc hữu ích", "worthwhile, useful", "The course gave me valuable feedback.", "Khóa học cho mình phản hồi có ích.", "valuable feedback|value feedback", "Valuable là tính từ. Useful nhấn mạnh công dụng, worthwhile nhấn mạnh xứng với công sức.", "Explain what kind of feedback helped you learn the most."],
+    [163, "memorable", "B2", 78, "Đáng nhớ", "unforgettable, striking", "It was the most memorable part of the trip.", "Đó là phần đáng nhớ nhất của chuyến đi.", "most memorable part|most memorably part", "Memorable đứng trước danh từ. Unforgettable thể hiện ấn tượng mạnh hơn.", "Describe a moment from a trip that has stayed with you."],
+    [164, "enjoyable", "B1", 82, "Thú vị, mang lại niềm vui", "pleasant, fun", "The trip was more enjoyable with friends.", "Chuyến đi vui hơn khi có bạn bè đi cùng.", "more enjoyable|more enjoy", "Enjoyable là tính từ. Fun thân mật, pleasant thường mang sắc thái dễ chịu.", "Explain what made a particular trip fun for you."],
+    [165, "rewarding", "B2", 73, "Đem lại cảm giác xứng đáng, mãn nguyện", "fulfilling, satisfying", "I find teaching beginners rewarding.", "Mình thấy dạy người mới rất có ý nghĩa.", "beginners rewarding|beginners rewardingly", "Dùng find + việc + tính từ rewarding. Fulfilling nhấn mạnh cảm giác ý nghĩa.", "Describe something that feels worthwhile even though it takes effort."],
+    [166, "demanding", "B2", 73, "Đòi hỏi nhiều công sức", "challenging, strenuous", "The job is demanding but rewarding.", "Công việc đòi hỏi nhiều công sức nhưng rất đáng làm.", "job is demanding|job is demanded", "Demanding chỉ việc đòi hỏi công sức hoặc chú ý. Strenuous thường dùng cho nỗ lực thể chất.", "Describe a job that requires sustained effort."],
+    [167, "stressful", "B1", 86, "Gây căng thẳng", "pressure-filled, taxing", "Moving to a new city can be stressful.", "Chuyển tới thành phố mới có thể gây căng thẳng.", "can be stressful|can be stressfully", "Stressful miêu tả tình huống gây căng thẳng. Stressed thường nói người đang thấy căng thẳng.", "Explain one source of pressure when moving to a new city."],
+    [168, "overwhelming", "B2", 77, "Quá tải, khó xử lý hết", "daunting, too much to handle", "The number of choices can feel overwhelming.", "Có quá nhiều lựa chọn nên dễ thấy quá tải.", "can feel overwhelming|can feel overwhelmingly", "Dùng overwhelming cho điều gây quá tải và overwhelmed cho người đang có cảm giác ấy.", "Describe a situation with so many choices that it was hard to decide."],
+    [169, "curious", "A2", 89, "Tò mò, muốn tìm hiểu", "inquisitive, eager to know", "I'm curious about how people learn new languages.", "Mình tò mò về cách mọi người học ngôn ngữ mới.", "curious about how|curious for how", "Dùng curious about + chủ đề. Inquisitive thường miêu tả người hay đặt câu hỏi.", "Say what you would like to find out about how people learn."],
+    [170, "skeptical", "C1", 67, "Hoài nghi, chưa tin", "doubtful, unconvinced", "I'm skeptical about claims that you can learn a language in a month.", "Mình hoài nghi tuyên bố có thể học một ngôn ngữ trong một tháng.", "skeptical about|skeptical to", "Dùng skeptical about + tuyên bố hoặc ý tưởng. Skeptical là cách viết Mỹ, sceptical là cách viết Anh.", "Explain why you doubt an advertisement that promises very fast results.", "Cả hai", "sceptical"],
+    [171, "essential", "B1", 89, "Thiết yếu, rất cần", "necessary, indispensable", "Access to clean water is essential for public health.", "Tiếp cận nước sạch là điều thiết yếu đối với sức khỏe cộng đồng.", "essential for public health|essential of public health", "Dùng essential for + mục tiêu hoặc người hưởng lợi. Indispensable nhấn mạnh thiếu thì không thể thực hiện được.", "Identify a basic requirement for keeping a community healthy."],
+    [172, "controversial", "B2", 70, "Gây tranh cãi", "contentious, disputed", "Charging people to drive downtown is a controversial policy.", "Thu phí người lái xe vào trung tâm là chính sách gây tranh cãi.", "a controversial policy|a controversially policy", "Controversial là tính từ chỉ vấn đề có ý kiến đối lập rõ rệt. Contentious khá trang trọng.", "Discuss a policy that people in a city strongly disagree about."],
+    [173, "adapt", "B2", 76, "Thích nghi với thay đổi", "adjust, acclimatize", "People can adapt to a new work routine over time.", "Mọi người có thể dần thích nghi với nếp làm việc mới.", "adapt to a new work routine|adapt with a new work routine", "Dùng adapt to + hoàn cảnh mới. Acclimatize thường nói về làm quen với khí hậu hoặc môi trường.", "Describe how people get used to a different schedule after changing jobs."],
+    [174, "contribute", "B2", 78, "Góp phần vào", "help bring about, play a part in", "Public libraries contribute to lifelong learning.", "Thư viện công góp phần thúc đẩy việc học suốt đời.", "contribute to lifelong learning|contribute lifelong learning", "Dùng contribute to + kết quả khi nói điều gì góp phần tạo ra kết quả đó.", "Explain how public libraries help people continue learning throughout life."],
+  ],
+  [
+    [175, "assess", "B2", 65, "Đánh giá mức độ hoặc tình trạng", "appraise, gauge", "We need to assess the impact of this change.", "Chúng tôi cần đánh giá tác động của thay đổi này.", "assess the impact|assess about the impact", "Assess nhận tân ngữ trực tiếp. Gauge thường gợi ý ước lượng mức độ thay vì đánh giá thật chi tiết.", "Say how you would gauge the impact of a recent change."],
+    [176, "evaluate", "B2", 67, "Đánh giá chất lượng hoặc hiệu quả", "appraise, judge", "The team will evaluate the method against clear criteria.", "Nhóm sẽ đánh giá phương pháp dựa trên các tiêu chí rõ ràng.", "evaluate the method|evaluate to the method", "Dùng evaluate + đối tượng và against + tiêu chí khi đối chiếu kết quả với chuẩn.", "Explain what criteria you would use to judge a new method."],
+    [177, "examine", "B2", 70, "Xem xét kỹ", "inspect, investigate", "We examine the samples under a microscope.", "Chúng tôi xem xét kỹ các mẫu dưới kính hiển vi.", "examine the samples|examine to the samples", "Examine nhận tân ngữ trực tiếp. Inspect thường nói về việc kiểm tra trực tiếp một vật.", "Describe how your team looks closely at a sample."],
+    [178, "compare", "A2", 88, "So sánh", "contrast, set side by side", "We compare the spectrum with the reference data.", "Chúng tôi so sánh phổ với dữ liệu tham chiếu.", "spectrum with the reference|spectrum from the reference", "Dùng compare A with B hoặc compare A to B. Contrast nhấn mạnh điểm khác nhau.", "Describe how you would check a spectrum against reference data."],
+    [179, "identify", "B1", 78, "Xác định, nhận diện", "recognize, pinpoint", "We need to identify which sample produced the strongest signal.", "Chúng tôi cần xác định mẫu nào tạo tín hiệu mạnh nhất.", "identify which sample|identify to which sample", "Identify có thể đi thẳng với danh từ hoặc mệnh đề which. Pinpoint nhấn mạnh độ chính xác.", "Say what you need to do to find the specific sample with the strongest signal."],
+    [180, "indicate", "B2", 69, "Cho thấy", "signal, suggest", "The results indicate that the signal changed after heating.", "Kết quả cho thấy tín hiệu thay đổi sau khi gia nhiệt.", "indicate that|indicate to that", "Dùng indicate that + mệnh đề. Suggest thường làm cho nhận định dè dặt hơn.", "Describe what the results point to after a sample was heated."],
+    [181, "demonstrate", "B2", 67, "Cho thấy rõ, chứng tỏ", "show, establish", "These results demonstrate that the method works under the tested conditions.", "Các kết quả này cho thấy phương pháp hoạt động trong các điều kiện đã thử.", "demonstrate that|demonstrate about that", "Dùng demonstrate that khi bằng chứng cho phép trình bày một kết luận rõ. Giới hạn phát biểu trong điều kiện đã thử.", "Explain what your experimental results clearly show about the method."],
+    [182, "establish", "B2", 68, "Xác lập bằng chứng đủ rõ", "determine, demonstrate", "We collected more data to establish whether the trend was repeatable.", "Chúng tôi thu thêm dữ liệu để xác định xem xu hướng có lặp lại được không.", "establish whether|establish to whether", "Dùng establish whether để nói về xác định chắc chắn một điều sau khi kiểm tra.", "Say what extra data would help determine whether a trend can be repeated."],
+    [183, "interpret", "B2", 64, "Diễn giải ý nghĩa", "make sense of, explain", "How should we interpret the second peak?", "Chúng tôi nên diễn giải đỉnh thứ hai thế nào?", "should we interpret|should we interpreting", "Sau should dùng nguyên mẫu. Interpret the data là rút ý nghĩa từ dữ liệu.", "Discuss how you would make sense of an unexpected second peak in a graph."],
+    [184, "estimate", "B1", 74, "Ước tính", "approximate, make an informed guess", "We can estimate the value from this graph.", "Chúng tôi có thể ước tính giá trị từ biểu đồ này.", "estimate the value|estimate about the value", "Estimate nhận tân ngữ trực tiếp và thường cho giá trị gần đúng.", "Explain how you could get an approximate value without an exact calculation."],
+    [185, "predict", "B1", 76, "Dự đoán", "forecast, project", "We can predict the trend from the initial measurements.", "Chúng tôi có thể dự đoán xu hướng từ các phép đo ban đầu.", "predict the trend|predict about the trend", "Dùng predict + danh từ hoặc predict that + mệnh đề. Forecast thường đi với dự báo có dữ liệu theo thời gian.", "Say what the early data lead you to expect will happen next."],
+    [186, "measure", "A2", 84, "Đo", "determine, record", "We measure the temperature every five minutes.", "Chúng tôi đo nhiệt độ cứ mỗi năm phút.", "measure the temperature|measure to the temperature", "Measure là xác định độ lớn bằng phép đo. Record là ghi lại giá trị đã đo.", "Describe what you would measure at regular intervals during a test."],
+    [187, "quantify", "C1", 43, "Định lượng, biểu thị bằng số", "measure numerically", "We can quantify the change using the difference between two readings.", "Chúng tôi có thể định lượng sự thay đổi bằng hiệu giữa hai số đo.", "quantify the change|quantify about the change", "Dùng quantify khi biến một nhận xét về mức độ thành con số cụ thể.", "Explain how to express an observed change as a number."],
+    [188, "derive", "C1", 49, "Suy ra từ dữ liệu hoặc công thức", "obtain, calculate from", "We can derive the value from the known relationship.", "Chúng tôi có thể suy ra giá trị từ mối quan hệ đã biết.", "derive the value from|derive the value of from", "Dùng derive X from Y. Derive có thể gợi ý nhiều bước suy luận hoặc tính toán.", "Explain how a value can be obtained from a relationship you already know."],
+    [189, "infer", "C1", 55, "Suy luận từ dấu hiệu hoặc bằng chứng", "deduce, conclude", "We can infer that conditions changed during the test.", "Có thể suy ra rằng điều kiện đã thay đổi trong lúc thử.", "infer that|infer to that", "Dùng infer that + mệnh đề hoặc infer X from Y. Deduce thường nhấn mạnh suy luận logic.", "Draw a conclusion from indirect evidence rather than a direct observation."],
+    [190, "validate", "C1", 56, "Kiểm chứng xem có phù hợp và đáng tin cậy", "verify, substantiate", "We will validate the model using independent data.", "Chúng tôi sẽ kiểm chứng mô hình bằng dữ liệu độc lập.", "validate the model|validate about the model", "Dùng validate + đối tượng khi kiểm tra nó có đáp ứng mục đích đã định. Verify thường là kiểm tra một chi tiết hoặc kết quả cụ thể.", "Say how data from a separate source could help test a model."],
+    [191, "reproduce", "B2", 59, "Tái tạo cùng kết quả hoặc hiện tượng", "recreate, duplicate", "The other team was able to reproduce the same effect.", "Nhóm kia đã tái tạo được cùng hiện tượng.", "reproduce the same effect|reproduce to the same effect", "Reproduce the effect nói về tạo lại hiệu ứng. Reproduce the results thường là thu lại kết quả tương tự.", "Explain what happened when another group tried to obtain the same effect."],
+    [192, "replicate", "C1", 51, "Lặp lại một nghiên cứu hoặc thí nghiệm", "repeat, reproduce", "The next step is to replicate the experiment with new samples.", "Bước tiếp theo là lặp lại thí nghiệm với các mẫu mới.", "to replicate the experiment|to replicate for the experiment", "Dùng replicate the experiment khi nói thực hiện lại thí nghiệm để kiểm tra kết quả.", "Suggest repeating an experiment with fresh samples to see if the result holds."],
+    [193, "omit", "C1", 56, "Bỏ sót hoặc chủ động lược bỏ", "leave out, exclude", "We chose to omit the irrelevant details from the summary.", "Chúng tôi quyết định lược bỏ các chi tiết không liên quan khỏi phần tóm tắt.", "omit the irrelevant details|omit about the irrelevant details", "Dùng omit something from something. Leave out thường tự nhiên hơn trong hội thoại.", "Tell someone which material was left out of a summary and why.", "Viết"],
+    [194, "distinguish", "B2", 66, "Phân biệt", "differentiate, tell apart", "It's hard to distinguish between the two signals.", "Khó phân biệt hai tín hiệu này.", "distinguish between the two|distinguish among between the two", "Dùng distinguish between A and B hoặc distinguish A from B. Tell apart thân mật hơn.", "Say why it is difficult to tell two very similar signals apart."],
+    [195, "consistent", "B2", 76, "Ổn định, đồng đều qua nhiều lần", "steady, uniform", "The method gave consistent results across all sessions.", "Phương pháp cho kết quả ổn định qua mọi buổi thử.", "consistent results|consistently results", "Dùng tính từ consistent trước results. Consistent with mang nghĩa phù hợp với một nguồn tham chiếu.", "Describe what it means when a method gives similar results every time."],
+    [196, "robust", "C1", 50, "Ít bị ảnh hưởng khi điều kiện thay đổi", "resilient, stable", "The method is robust to small changes in temperature.", "Phương pháp ít bị ảnh hưởng bởi thay đổi nhiệt độ nhỏ.", "robust to small changes|robust small changes", "Robust to + nguồn thay đổi. Trong nghiên cứu, robust thường nói kết quả hoặc phương pháp đứng vững khi thử các điều kiện khác nhau.", "Describe a method that still works when temperature varies slightly."],
+    [197, "preliminary", "C1", 48, "Sơ bộ", "initial, early-stage", "The preliminary results look promising.", "Kết quả sơ bộ có vẻ khả quan.", "preliminary results|preliminarily results", "Preliminary là tính từ. Từ này cho biết kết quả còn ở giai đoạn đầu và có thể thay đổi.", "Present early findings while making clear that you're still collecting data."],
+    [198, "evidence", "B1", 87, "Bằng chứng", "support, corroboration", "We need more evidence before drawing a conclusion.", "Chúng tôi cần thêm bằng chứng trước khi kết luận.", "more evidence|more evidences", "Evidence thường không đếm được. Dùng a piece of evidence khi nói một bằng chứng cụ thể.", "Explain what kind of support would make your conclusion more convincing."],
+    [199, "limitation", "B2", 69, "Điểm giới hạn kết luận hoặc phạm vi áp dụng", "constraint, restriction", "A limitation of the method is that it only works at room temperature.", "Một hạn chế của phương pháp là nó chỉ hoạt động ở nhiệt độ phòng.", "limitation of the method|limitation from the method", "Dùng a limitation of + phương pháp hoặc nghiên cứu. Constraint thường nhấn mạnh một điều kiện ràng buộc việc thực hiện.", "State one restriction that limits when your method can be used."],
+  ],
+];
+
+const singleWords = wordGroups.flatMap((rows, topic) => rows.map(row => {
+  const [id, term, level, score, meaning, synonyms, example, translation, correction, note, prompt, register = "Cả hai", alternative] = row;
+  const [correctFragment, incorrectFragment] = correction.split("|");
+  const error = example.replace(correctFragment, incorrectFragment);
+  return {...makePhrase(id, topic, [term, level, score, register, meaning, example, translation, error, note, prompt, null, alternative]), synonyms, single: true};
+}));
 const shapes = {
   wave:'<path d="M2 12h2l2-5 3 10 3-14 3 18 3-10 2 1h2"/>',
   chat:'<path d="M5 17l-2 4v-6a4 4 0 0 1-1-3V8a5 5 0 0 1 5-5h10a5 5 0 0 1 5 5v4a5 5 0 0 1-5 5Z"/><path d="M7 10h10m-10 3h6"/>',
@@ -199,8 +315,8 @@ function save() {
 }
 if (!storageOK) document.querySelector(".footer .shell").textContent = "Trình duyệt đang chặn tải tiến độ.";
 
-const study = { topic:"all", level:"all", search:"" };
-const practiceSettings = { topic:"all", type:"all", count:"10" };
+const study = { topic:"all", level:"all", kind:"all", search:"" };
+const practiceSettings = { topic:"all", type:"all", kind:"all", count:"10" };
 let currentPage = "home";
 let run = null;
 let reviewRun = null;
@@ -221,7 +337,8 @@ function shuffle(items) {
   }
   return result;
 }
-const typeNames = ["Nhớ nghĩa", "Điền cụm từ", "Sửa lỗi", "Dịch Việt–Anh", "Chọn tình huống"];
+const typeNames = ["Nhớ nghĩa", "Điền từ hoặc cụm từ", "Sửa lỗi", "Dịch Việt–Anh", "Chọn tình huống"];
+const phrases = expressions.concat(singleWords);
 const phrasesById = new Map(phrases.map(phrase => [phrase.id, phrase]));
 const phrasesByTopic = topics.map((_, index) => phrases.filter(phrase => phrase.topic === index));
 const exercises = phrases.flatMap(phrase => typeNames.map((type, index) => ({phrase, type, index, key:`${phrase.id}-${index}`})));
@@ -235,17 +352,18 @@ function prioritizeUnanswered(items) {
 function makeQuestion(exercise) {
   const {phrase, index} = exercise;
   const other = phrasesByTopic[phrase.topic].filter(item => item.id !== phrase.id);
+  const label = phrase.single ? "từ" : "cụm từ";
   if (index === 0) {
-    return { title:phrase.term, instruction:"Chọn nghĩa của cụm từ.", answer:phrase.meaning, choices:[phrase.meaning, ...shuffle(other).slice(0,3).map(item => item.meaning)] };
+    return { title:phrase.term, instruction:`Chọn nghĩa của ${label}.`, answer:phrase.meaning, choices:[phrase.meaning, ...shuffle(other).slice(0,3).map(item => item.meaning)] };
   }
   if (index === 1) {
     const start = phrase.example.toLowerCase().indexOf(phrase.pattern.toLowerCase());
     const end = start + phrase.pattern.length;
-    return { title:phrase.example.slice(0,start) + "_____" + phrase.example.slice(end), instruction:"Điền cụm tiếng Anh còn thiếu.", answer:phrase.example.slice(start,end), alternative:phrase.alternative, hint:phrase.translation };
+    return { title:phrase.example.slice(0,start) + "_____" + phrase.example.slice(end), instruction:`Điền ${label} tiếng Anh còn thiếu.`, answer:phrase.example.slice(start,end), alternative:phrase.alternative, hint:phrase.translation };
   }
   if (index === 2) {
     return {
-      title:phrase.error, instruction:"Viết lại cả câu và sửa lỗi trong cụm từ.", answer:phrase.corrected,
+      title:phrase.error, instruction:"Viết lại cả câu để sửa lỗi.", answer:phrase.corrected,
       alternative:phrase.alternative && phrase.corrected.toLowerCase().replace(phrase.pattern.toLowerCase(), phrase.alternative),
     };
   }
@@ -256,7 +374,7 @@ function makeQuestion(exercise) {
   const distractors = interchangeable.includes(phrase.term)
     ? other.filter(item => !interchangeable.includes(item.term))
     : other;
-  return { title:phrase.prompt, instruction:"Chọn cụm phù hợp nhất cho tình huống.", answer:phrase.term, choices:[phrase.term, ...shuffle(distractors).slice(0,3).map(item => item.term)] };
+  return { title:phrase.prompt, instruction:`Chọn ${label} phù hợp nhất cho tình huống.`, answer:phrase.term, choices:[phrase.term, ...shuffle(distractors.filter(item => Boolean(item.single) === Boolean(phrase.single))).slice(0,3).map(item => item.term)] };
 }
 
 function dateLabel(timestamp) {
@@ -299,13 +417,13 @@ function renderHome() {
   </section>
   <section class="section" aria-label="Tiến độ"><div class="stats">
     ${stat("check", `${Object.keys(progress.results).length}/${exercises.length}`, "Câu đã làm", "peach")}
-    ${stat("repeat", dueCards().length, "Cụm đến hạn ôn")}
+    ${stat("repeat", dueCards().length, "Thẻ đến hạn ôn")}
     ${stat("mic", progress.speaking, "Lượt luyện nói", "mint")}
   </div></section>
-  <section class="section"><div class="section-title"><h2>Chọn chủ đề</h2><p>${phrases.length} cụm từ · ${exercises.length} câu luyện</p></div><div class="topic-grid">
+  <section class="section"><div class="section-title"><h2>Chọn chủ đề</h2><p>${singleWords.length} từ đơn · ${expressions.length} cụm từ · ${exercises.length.toLocaleString("vi-VN")} câu luyện</p></div><div class="topic-grid">
   ${topics.map((topic,index) => {
     const count = phrasesByTopic[index].length;
-    return `<button class="topic" data-act="topic" data-id="${index}"><span class="glyph ${topic.color}">${icon(topic.icon)}</span><div><h3>${topic.name}</h3><p>${topic.description}</p></div><small>${count} cụm từ · ${count * typeNames.length} câu</small></button>`;
+    return `<button class="topic" data-act="topic" data-id="${index}"><span class="glyph ${topic.color}">${icon(topic.icon)}</span><div><h3>${topic.name}</h3><p>${topic.description}</p></div><small>${count} mục từ · ${count * typeNames.length} câu</small></button>`;
   }).join("")}
   </div></section>`;
 }
@@ -315,29 +433,38 @@ function topicOptions(selected, includeAll = true) {
   return all +
     topics.map((topic,index) => `<option value="${index}"${selected === String(index) ? " selected" : ""}>${topic.name}</option>`).join("");
 }
+const kindOptions = '<option value="all">Tất cả từ vựng</option><option value="single">Từ đơn</option><option value="phrase">Cụm từ</option>';
+const matchesKind = (item, kind) => kind === "all" || (kind === "single") === Boolean(item.single);
+const searchKey = value => normalize(value).normalize("NFD").replace(/\p{M}/gu,"").replace(/đ/g,"d");
+const synonymLine = item => item.synonyms
+  ? `<p class="note">Gần nghĩa <strong lang="en">${item.synonyms}</strong></p>` : "";
+
 function renderWords() {
-  main.innerHTML = `${title("Từ vựng theo cụm", "CEFR và % độ phổ biến là ước lượng để ưu tiên học. Nhãn Nói, Viết hoặc Cả hai cho biết ngữ cảnh dùng tự nhiên nhất.")}
+  main.innerHTML = `${title("Từ vựng", "CEFR và % độ phổ biến là ước lượng để ưu tiên học. Nhãn Nói, Viết hoặc Cả hai cho biết ngữ cảnh dùng tự nhiên nhất.")}
     <div class="filters">
-      <label><span class="sr">Tìm cụm từ</span><input type="search" id="word-search" placeholder="Tìm Anh hoặc Việt"></label>
+      <label><span class="sr">Tìm từ vựng</span><input type="search" id="word-search" placeholder="Tìm Anh hoặc Việt"></label>
+      <label><span class="sr">Loại từ vựng</span><select id="word-kind">${kindOptions}</select></label>
       <label><span class="sr">Chủ đề</span><select id="word-topic">${topicOptions(study.topic)}</select></label>
       <label><span class="sr">Trình độ</span><select id="word-level"><option value="all">Mọi trình độ</option><option value="A">A · Cơ bản</option><option value="B">B · Trung cấp</option><option value="C">C · Nâng cao</option></select></label>
     </div>
     <div class="cards" id="word-cards"></div>`;
   el("word-search").value = study.search;
+  el("word-kind").value = study.kind;
   el("word-level").value = study.level;
   renderWordCards();
 }
 function renderWordCards() {
-  const query = normalize(study.search).normalize("NFD").replace(/\p{M}/gu,"").replace(/đ/g,"d");
+  const query = searchKey(study.search);
   const matches = phrases.filter(phrase => (study.topic === "all" || Number(study.topic) === phrase.topic)
     && (study.level === "all" || phrase.level.startsWith(study.level))
-    && normalize(`${phrase.term} ${phrase.meaning}`).normalize("NFD").replace(/\p{M}/gu,"").replace(/đ/g,"d").includes(query));
+    && matchesKind(phrase, study.kind)
+    && searchKey(`${phrase.term} ${phrase.meaning} ${phrase.synonyms || ""}`).includes(query));
   el("word-cards").innerHTML = matches.map(phrase => `<article class="word">
     <div class="row spread"><h2 lang="en">${phrase.term}</h2><button class="btn alt small" data-act="audio" data-id="${phrase.id}" aria-label="Nghe ${phrase.term}">${icon("speaker")}</button></div>
     <div class="tags"><span class="pill">${phrase.level}</span><span class="pill warm" title="Ước lượng độ phổ biến trong đời sống">${phrase.score}% phổ biến</span><span class="pill secondary">${phrase.register}</span></div>
-    <p>${phrase.meaning}</p><p class="sample" lang="en">${phrase.example}</p><p class="subsample">${phrase.translation}</p><p class="note muted">${phrase.note}</p>
+    <p>${phrase.meaning}</p><p class="sample" lang="en">${phrase.example}</p><p class="subsample">${phrase.translation}</p>${synonymLine(phrase)}<p class="note muted">${phrase.note}</p>
     <div class="actions"><button class="btn small alt" data-act="queue" data-id="${phrase.id}" ${progress.cards[phrase.id] ? "disabled" : ""}>${progress.cards[phrase.id] ? "Đã lưu để ôn" : "Thêm vào lịch ôn"}</button></div></article>`).join("")
-    || '<p class="empty muted">Không tìm thấy cụm từ phù hợp.</p>';
+    || '<p class="empty muted">Không tìm thấy từ vựng phù hợp.</p>';
 }
 function renderPractice() {
   const heading = title("Bài tập", "Chọn chủ đề và dạng bài. Mỗi câu có đáp án và giải thích để m sửa ngay.");
@@ -345,10 +472,12 @@ function renderPractice() {
     main.innerHTML = `${heading}
       <form class="panel quiz" id="practice-form"><div class="filters">
         <label><span class="sr">Chủ đề</span><select id="practice-topic">${topicOptions(practiceSettings.topic)}</select></label>
+        <label><span class="sr">Loại từ vựng</span><select id="practice-kind">${kindOptions}</select></label>
         <label><span class="sr">Dạng bài</span><select id="practice-type"><option value="all">Trộn 5 dạng bài</option>${typeNames.map((name,index) => `<option value="${index}">${name}</option>`).join("")}</select></label>
         <label><span class="sr">Số câu</span><select id="practice-count"><option value="10">10 câu</option><option value="20">20 câu</option><option value="all">Toàn bộ</option></select></label></div>
       <button class="btn" type="submit">Bắt đầu làm bài</button></form>`;
     el("practice-type").value = practiceSettings.type;
+    el("practice-kind").value = practiceSettings.kind;
     el("practice-count").value = practiceSettings.count;
     return;
   }
@@ -376,7 +505,7 @@ function renderPractice() {
       return `<button type="button" class="option ${color || ""}" data-act="choose" data-id="${index}" aria-pressed="${selected}" ${result ? "disabled" : ""}>${choice}</button>`;
     }).join("")}</div>` : `<label><span class="sr">Câu trả lời</span><input class="typed" id="typed" placeholder="Gõ câu trả lời bằng tiếng Anh" autocapitalize="off" autocomplete="off" spellcheck="false" value="${escapeHtml(result?.response || "")}" ${result ? "readonly" : "required"}></label>`}
     <div id="quiz-feedback" class="feedback${result && !result.correct ? " bad" : ""}" role="status" tabindex="-1" ${result ? "" : "hidden"}>
-      ${result ? `<div class="answer-title">${result.correct ? "Đúng rồi!" : "Đáp án mẫu"}</div><p lang="en">${question.answer}</p><p>${exercise.phrase.note}</p>` : ""}
+      ${result ? `<div class="answer-title">${result.correct ? "Đúng rồi!" : "Đáp án mẫu"}</div><p lang="en">${question.answer}</p>${synonymLine(exercise.phrase)}<p>${exercise.phrase.note}</p>` : ""}
     </div>
     <div class="actions spread">
       ${result ? `<button type="button" class="btn" data-act="next">${run.position + 1 === run.items.length ? "Xem kết quả" : "Câu tiếp theo"}</button>` : `<button type="submit" class="btn" id="check-answer" ${question.choices && run.selection === null ? "disabled" : ""}>Kiểm tra</button>`}
@@ -419,7 +548,7 @@ function submitAnswer() {
   el("quiz-feedback").focus();
 }
 function renderReview() {
-  const heading = title("Ôn tập", "Nhìn nghĩa và tự nói cụm tiếng Anh trước khi lật thẻ. Mốc ôn là 1, 3, 7, 14 và 30 ngày.");
+  const heading = title("Ôn tập", "Nhìn nghĩa và tự nói bằng tiếng Anh trước khi lật thẻ. Mốc ôn là 1, 3, 7, 14 và 30 ngày.");
   const due = dueCards();
   const errors = exercises.filter(exercise => progress.errors[exercise.key]);
   if (reviewRun) {
@@ -427,7 +556,7 @@ function renderReview() {
     const phrase = reviewRun.items[reviewRun.position];
     main.innerHTML = `${heading}<section class="panel quiz"><div class="row spread"><span class="pill">Thẻ ghi nhớ</span><span class="muted">Còn ${remaining.length + 1} thẻ</span></div>
       <h2>${phrase.meaning}</h2><p>${phrase.translation}</p>
-      ${reviewRun.revealed ? `<div class="card-answer"><h3 lang="en">${phrase.term}</h3><p lang="en">${phrase.example}</p></div>
+      ${reviewRun.revealed ? `<div class="card-answer"><h3 lang="en">${phrase.term}</h3><p lang="en">${phrase.example}</p>${synonymLine(phrase)}</div>
         <div class="actions"><button class="btn" data-act="review-grade" data-id="1">Nhớ được</button><button class="btn alt" data-act="review-grade" data-id="0">Chưa nhớ</button><button class="btn alt small" data-act="audio" data-id="${phrase.id}">${icon("speaker")} Nghe mẫu</button></div>`
         : '<div class="actions section"><button class="btn" data-act="reveal">Lật thẻ</button></div>'}</section>`;
     return;
@@ -471,13 +600,13 @@ function renderSpeaking() {
   main.innerHTML = `${title("Luyện nói 60 giây", "Nói thành tiếng, nghe lại bản thu và tự kiểm tra bằng ba tiêu chí bên dưới.")}
     <section class="panel quiz spoken">
     <div class="row spread"><label><span class="sr">Chủ đề luyện nói</span><select class="typed" id="speaking-topic">${topicOptions(String(speakingTopic), false)}</select></label><span class="pill">Đề ${speakingIndex + 1}/${choices.length}</span></div>
-    <h2 lang="en">${phrase.prompt}</h2><p class="muted">Cụm gợi ý <strong lang="en">${phrase.term}</strong></p>
+    <h2 lang="en">${phrase.prompt}</h2><p class="muted">Gợi ý <strong lang="en">${phrase.term}</strong></p>
     <div id="timer" class="timer">1:00</div>
     <div class="actions"><button class="btn" id="timer-button" data-act="timer">Bấm giờ</button><button class="btn alt" id="record-button" data-act="record">${icon("mic")} Thu âm</button><button class="btn alt" data-act="speaking-next">Đề tiếp theo</button></div>
     <p class="muted" id="mic-status" role="status"></p><audio class="record-audio" id="record-audio" controls hidden></audio>
-    <details><summary>Ví dụ dùng cụm từ</summary><p lang="en">${phrase.example}</p></details>
+    <details><summary>Ví dụ</summary><p lang="en">${phrase.example}</p>${synonymLine(phrase)}</details>
     <h3>Tự kiểm tra</h3>
-    <div class="rubric"><label><input type="checkbox">Mình trả lời trực tiếp và có một lý do.</label><label><input type="checkbox">Mình có ví dụ hoặc chi tiết cụ thể.</label><label><input type="checkbox">Mình dùng cụm gợi ý đúng ngữ cảnh.</label></div>
+    <div class="rubric"><label><input type="checkbox">Mình trả lời trực tiếp và có một lý do.</label><label><input type="checkbox">Mình có ví dụ hoặc chi tiết cụ thể.</label><label><input type="checkbox">Mình dùng gợi ý đúng ngữ cảnh.</label></div>
     <button class="btn small alt" data-act="speaking-save">Lưu lượt luyện</button>
     </section>`;
 }
@@ -634,9 +763,10 @@ document.addEventListener("input", event => {
 });
 document.addEventListener("change", event => {
   const {id,value} = event.target;
-  if (id === "word-topic" || id === "word-level") {
+  if (id === "word-topic" || id === "word-level" || id === "word-kind") {
     if (id === "word-topic") study.topic = value;
-    else study.level = value;
+    else if (id === "word-level") study.level = value;
+    else study.kind = value;
     renderWordCards();
   }
   if (id === "speaking-topic") {
@@ -655,10 +785,12 @@ document.addEventListener("submit", event => {
     event.preventDefault();
     practiceSettings.topic = el("practice-topic").value;
     practiceSettings.type = el("practice-type").value;
+    practiceSettings.kind = el("practice-kind").value;
     practiceSettings.count = el("practice-count").value;
     const items = exercises.filter(item =>
       (practiceSettings.topic === "all" || Number(practiceSettings.topic) === item.phrase.topic)
-      && (practiceSettings.type === "all" || Number(practiceSettings.type) === item.index));
+      && (practiceSettings.type === "all" || Number(practiceSettings.type) === item.index)
+      && matchesKind(item.phrase, practiceSettings.kind));
     const mixed = prioritizeUnanswered(items);
     start(practiceSettings.count === "all" ? mixed : mixed.slice(0,Number(practiceSettings.count)));
   }
